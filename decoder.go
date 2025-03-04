@@ -25,7 +25,7 @@ func DecodeImg(img image.Image, path string) (*Matrix, error) {
 			continue
 		}
 
-		newGroup := PointsToGroup(group)
+		newGroup := NewPointGroup(group)
 
 		if newGroup.IsHollow {
 			hollow = append(hollow, newGroup)

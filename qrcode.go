@@ -2,7 +2,6 @@ package qrcode
 
 import (
 	"errors"
-	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
@@ -264,7 +263,7 @@ func PossListToGroup(groups []*PointGroup) *PointGroup {
 	for _, group := range groups {
 		newGroup = append(newGroup, group.Group...)
 	}
-	return PointsToGroup(newGroup)
+	return NewPointGroup(newGroup)
 }
 
 type K struct {
@@ -284,28 +283,23 @@ func IsVertical(kf, kl *K) (offset float64) {
 	return
 }
 
-func PointsToGroup(group []Point) *PointGroup {
-	p := &PointGroup{
-		Group:    group,
-		Center:   CenterPoint(group),
-		GroupMap: make(map[Point]bool),
-	}
+func NewPointGroup(group []Point) *PointGroup {
+	pm := make(map[Point]bool)
 
 	for _, point := range group {
-		p.GroupMap[point] = true
+		pm[point] = true
 	}
 
-	p.Min, p.Max = Rectangle(group)
+	min, max := Rectangle(group)
 
-	hh := p.Hollow()
-
-	if hh { 
-		fmt.Println("test")
+	return &PointGroup{
+		Group:    group,
+		Center:   CenterPoint(group),
+		GroupMap: pm,
+		Min:      min,
+		Max:      max,
+		IsHollow: Hollow(pm, min, max),
 	}
-
-	p.IsHollow = hh
-
-	return p
 }
 
 func Rectangle(group []Point) (Point, Point) {
@@ -383,8 +377,8 @@ func MaskFunc(code int) func(x, y int) bool {
 	}
 }
 
-func SplitGroup(poss PointsMatrix, centerX, centerY int, around []Point) {
-	maxY := len(poss) - 1
+func SplitGroup(pointMatrix *PointsMatrix, centerX, centerY int, around *[]Point) {
+	maxY := len(*pointMatrix) - 1
 	for y := -1; y < 2; y++ {
 		for x := -1; x < 2; x++ {
 			hereY := centerY + y
@@ -393,129 +387,42 @@ func SplitGroup(poss PointsMatrix, centerX, centerY int, around []Point) {
 			}
 
 			hereX := centerX + x
-			maxX := len(poss[hereY]) - 1
+			maxX := len((*pointMatrix)[hereY]) - 1
 
 			if hereX < 0 || hereX > maxX {
 				continue
 			}
 
-			v := poss[hereY][hereX]
+			v := (*pointMatrix)[hereY][hereX]
 			if v {
-				poss[hereY][hereX] = false
+				(*pointMatrix)[hereY][hereX] = false
 
-				around = append(around, Point{hereX, hereY})
+				*around = append(*around, Point{hereX, hereY})
 			}
 		}
 	}
 }
 
-func (group *PointGroup) Hollow() bool {
-	count := len(group.GroupMap)
+func Hollow(pm map[Point]bool, minP, maxP Point) bool {
+	count := len(pm)
 
-	for y := group.Min.Y; y <= group.Max.Y; y++ {
+	for y := minP.Y; y <= maxP.Y; y++ {
 		min, max := -1, -1
 
-		for x := group.Min.X; x <= group.Max.X; x++ {
-			if group.GroupMap[Point{x, y}] {
+		for x := minP.X; x <= maxP.X; x++ {
+			if pm[Point{x, y}] {
 				if min < 0 {
 					min = x
 				}
+
 				max = x
 			}
 		}
-		count = count - (max - min + 1)
+
+		count -= (max - min + 1)
 	}
 
 	return count != 0
-}
-
-func ParseBlock(m *Matrix, data []bool) ([]bool, error) {
-	version := m.Version()
-	info, err := m.FormatInfo()
-	if err != nil {
-		return nil, err
-	}
-	var qrCodeVersion = QRcodeVersion{}
-	for _, qrCV := range Versions {
-		if qrCV.Level == RecoveryLevel(info.ErrorCorrectionLevel) && qrCV.Version == version {
-			qrCodeVersion = qrCV
-		}
-	}
-
-	var dataBlocks [][]bool
-	for _, block := range qrCodeVersion.Block {
-		for i := 0; i < block.NumBlocks; i++ {
-			dataBlocks = append(dataBlocks, []bool{})
-		}
-	}
-	for {
-		leftLength := len(data)
-		no := 0
-		for _, block := range qrCodeVersion.Block {
-			for i := 0; i < block.NumBlocks; i++ {
-				if len(dataBlocks[no]) < block.NumDataCodewords*8 {
-					dataBlocks[no] = append(dataBlocks[no], data[0:8]...)
-					data = data[8:]
-				}
-				no += 1
-			}
-		}
-		if leftLength == len(data) {
-			break
-		}
-	}
-
-	var errorBlocks [][]bool
-	for _, block := range qrCodeVersion.Block {
-		for i := 0; i < block.NumBlocks; i++ {
-			errorBlocks = append(errorBlocks, []bool{})
-		}
-	}
-	for {
-		leftLength := len(data)
-		no := 0
-		for _, block := range qrCodeVersion.Block {
-			for i := 0; i < block.NumBlocks; i++ {
-				if len(errorBlocks[no]) < (block.NumCodewords-block.NumDataCodewords)*8 {
-					errorBlocks[no] = append(errorBlocks[no], data[:8]...)
-					if len(data) > 8 {
-						data = data[8:]
-					}
-				}
-				no += 1
-			}
-		}
-		if leftLength == len(data) {
-			break
-		}
-	}
-
-	var result []byte
-	for i := range dataBlocks {
-		blockByte, err := QRReconstruct(Bool2Byte(dataBlocks[i]), Bool2Byte(errorBlocks[i]))
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, blockByte[:len(Bool2Byte(dataBlocks[i]))]...)
-	}
-	return Byte2Bool(result), nil
-}
-
-func Byte2Bool(bl []byte) []bool {
-	var result []bool
-	for _, b := range bl {
-		temp := make([]bool, 8)
-		for i := 0; i < 8; i++ {
-			if (b>>uint(i))&1 == 1 {
-				temp[7-i] = true
-			} else {
-				temp[7-i] = false
-			}
-
-		}
-		result = append(result, temp...)
-	}
-	return result
 }
 
 func LineWidth(positionDetectionPatterns [][]*PointGroup) float64 {
@@ -572,74 +479,6 @@ func GetData(unmaskMatrix, dataArea *Matrix) []bool {
 		t = t - 2
 	}
 	return data
-}
-
-func Bits2Bytes(dataCode []bool, version int) ([]byte, error) {
-	// The first 4 bits are the encoding format, the next four bits are the actual data
-	mode := Bit2Int(dataCode[0:4])
-	encoder, err := GetDataEncoder(version)
-	if err != nil {
-		return nil, err
-	}
-	err = encoder.SetCharModeCharDecoder(mode)
-	if err != nil {
-		return nil, err
-	}
-
-	modeCharDecoder := encoder.ModeCharDecoder
-
-	return modeCharDecoder.Decode(dataCode[4:])
-}
-
-func StringBool(dataCode []bool) string {
-	return StringByte(Bool2Byte(dataCode))
-}
-
-func StringByte(b []byte) string {
-	var bitString string
-	for i := 0; i < len(b)*8; i++ {
-		if (i % 8) == 0 {
-			bitString += " "
-		}
-
-		if (b[i/8] & (0x80 >> byte(i%8))) != 0 {
-			bitString += "1"
-		} else {
-			bitString += "0"
-		}
-	}
-
-	return fmt.Sprintf("numBits=%d, bits=%s", len(b)*8, bitString)
-}
-
-func Bool2Byte(dataCode []bool) []byte {
-	var result []byte
-	for i := 0; i < len(dataCode); {
-		result = append(result, Bit2Byte(dataCode[i:i+8]))
-		i += 8
-	}
-	return result
-}
-func Bit2Int(bits []bool) int {
-	g := 0
-	for _, i := range bits {
-		g = g << 1
-		if i {
-			g += 1
-		}
-	}
-	return g
-}
-
-func Bit2Byte(bits []bool) byte {
-	var g uint8
-	for _, i := range bits {
-		g = g << 1
-		if i {
-			g += 1
-		}
-	}
-	return byte(g)
 }
 
 func Line(start, end *Point, matrix *Matrix) (line []bool) {
@@ -749,12 +588,14 @@ func (mx *Matrix) SplitGroups() [][]Point {
 			if !v {
 				continue
 			}
-			var newGroup []Point
-			newGroup = append(newGroup, Point{x, y})
+
+			newGroup := []Point{{x, y}}
+
 			m[y][x] = false
+
 			for i := range newGroup {
 				v := newGroup[i]
-				SplitGroup(m, v.X, v.Y, newGroup)
+				SplitGroup(&m, v.X, v.Y, &newGroup)
 			}
 			groups = append(groups, newGroup)
 		}
