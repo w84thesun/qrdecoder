@@ -285,21 +285,27 @@ func IsVertical(kf, kl *K) (offset float64) {
 }
 
 func PointsToGroup(group []Point) *PointGroup {
-	posGroup := &PointGroup{
+	p := &PointGroup{
 		Group:    group,
 		Center:   CenterPoint(group),
 		GroupMap: make(map[Point]bool),
 	}
 
-	for _, pos := range group {
-		posGroup.GroupMap[pos] = true
+	for _, point := range group {
+		p.GroupMap[point] = true
 	}
 
-	posGroup.Min, posGroup.Max = Rectangle(group)
+	p.Min, p.Max = Rectangle(group)
 
-	posGroup.IsHollow = posGroup.Hollow()
+	hh := p.Hollow()
 
-	return posGroup
+	if hh { 
+		fmt.Println("test")
+	}
+
+	p.IsHollow = hh
+
+	return p
 }
 
 func Rectangle(group []Point) (Point, Point) {
