@@ -2895,13 +2895,13 @@ func (de *dataEncoder) SetCharModeCharDecoder(mode int) error {
 	return fmt.Errorf("mode:%v not suport", mode)
 }
 
-
 var AlphanumericDecoderChar = []string{
 	"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
 	"A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
 	"K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
-	"U", "V", "W", "X", "Y", "Z", "SP", "$","%", "*",
+	"U", "V", "W", "X", "Y", "Z", "SP", "$", "%", "*",
 	"+", "-", ".", "/", ":"}
+
 type ModeCharDecoder interface {
 	Decode(b []bool) ([]byte, error)
 }
@@ -2910,22 +2910,21 @@ type AlphanumericDecoder struct {
 	countIndicator int
 }
 
-
-func (d *AlphanumericDecoder) Decode(data []bool) ([]byte, error)  {
+func (d *AlphanumericDecoder) Decode(data []bool) ([]byte, error) {
 	encodeLength := 11
 	dataLenght := Bit2Int(data[0:d.countIndicator])
-	hpos := dataLenght / 2 * encodeLength + (encodeLength - dataLenght % 2)
+	hpos := dataLenght/2*encodeLength + (encodeLength - dataLenght%2)
 
 	data = data[d.countIndicator:hpos]
 	result := strings.Builder{}
-	for i := 0; i < dataLenght*encodeLength && i < len(data); i = i+ encodeLength{
+	for i := 0; i < dataLenght*encodeLength && i < len(data); i = i + encodeLength {
 		ipos := i + encodeLength
-		if ipos > len(data) -1 && Bit2Int(data[i:]) < 45 {
-			result.WriteString( AlphanumericDecoderChar[Bit2Int(data[i:ipos])])
-		}else {
+		if ipos > len(data)-1 && Bit2Int(data[i:]) < 45 {
+			result.WriteString(AlphanumericDecoderChar[Bit2Int(data[i:ipos])])
+		} else {
 			first := Bit2Int(data[i:ipos]) / 45
-			result.WriteString( AlphanumericDecoderChar[first])
-			second := Bit2Int(data[i:ipos]) - first * 45
+			result.WriteString(AlphanumericDecoderChar[first])
+			second := Bit2Int(data[i:ipos]) - first*45
 			if second < 45 {
 				result.WriteString(AlphanumericDecoderChar[second])
 			}
@@ -2935,11 +2934,11 @@ func (d *AlphanumericDecoder) Decode(data []bool) ([]byte, error)  {
 	return []byte(result.String()), nil
 }
 
-
 type EightBitDecoder struct {
 	countIndicator int
 }
-func (d *EightBitDecoder) Decode(data []bool) ([]byte, error)  {
+
+func (d *EightBitDecoder) Decode(data []bool) ([]byte, error) {
 	dataLenght := Bit2Int(data[0:d.countIndicator])
 	hpos := dataLenght*8 + d.countIndicator
 	size := len(data)
@@ -2949,9 +2948,8 @@ func (d *EightBitDecoder) Decode(data []bool) ([]byte, error)  {
 	var result []byte
 	data = data[d.countIndicator:hpos]
 
-	for i := 0; i < dataLenght*8 && i < size; i = i + 8{
+	for i := 0; i < dataLenght*8 && i < size; i = i + 8 {
 		result = append(result, Bit2Byte(data[i:i+8]))
 	}
 	return result, nil
 }
-
