@@ -2847,21 +2847,21 @@ type dataEncoder struct {
 }
 
 var dataEncoderTypeMap = map[dataEncoderType]*dataEncoder{
-	dataEncoderType1To9: &dataEncoder{
+	dataEncoderType1To9: {
 		minVersion:                   1,
 		maxVersion:                   9,
 		numNumericCharCountBits:      10,
 		numAlphanumericCharCountBits: 9,
 		numByteCharCountBits:         8,
 	},
-	dataEncoderType10To26: &dataEncoder{
+	dataEncoderType10To26: {
 		minVersion:                   10,
 		maxVersion:                   26,
 		numNumericCharCountBits:      12,
 		numAlphanumericCharCountBits: 11,
 		numByteCharCountBits:         16,
 	},
-	dataEncoderType27To40: &dataEncoder{
+	dataEncoderType27To40: {
 		minVersion:                   27,
 		maxVersion:                   40,
 		numNumericCharCountBits:      14,
@@ -2939,8 +2939,8 @@ type EightBitDecoder struct {
 }
 
 func (d *EightBitDecoder) Decode(data []bool) ([]byte, error) {
-	dataLenght := Bit2Int(data[0:d.countIndicator])
-	hpos := dataLenght*8 + d.countIndicator
+	dataLength := Bit2Int(data[0:d.countIndicator])
+	hpos := dataLength*8 + d.countIndicator
 	size := len(data)
 	if hpos > size-1 {
 		hpos = size - 1
@@ -2948,7 +2948,7 @@ func (d *EightBitDecoder) Decode(data []bool) ([]byte, error) {
 	var result []byte
 	data = data[d.countIndicator:hpos]
 
-	for i := 0; i < dataLenght*8 && i < size; i = i + 8 {
+	for i := 0; i < dataLength*8 && i < size; i += 8 {
 		result = append(result, Bit2Byte(data[i:i+8]))
 	}
 	return result, nil

@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-func DecodeImg(img image.Image, path string) (*Matrix, error) {
+func DecodeImg(img image.Image, path string, debug bool) (*Matrix, error) {
 	matrix := &Matrix{
 		OrgImage: img,
 		OrgSize:  img.Bounds(),
@@ -43,8 +43,10 @@ func DecodeImg(img image.Image, path string) (*Matrix, error) {
 		}
 	}
 
-	for i, pattern := range positionDetectionPatterns {
-		ExportGroups(matrix.OrgSize, pattern, filepath.Join(path, "positionDetectionPattern"+strconv.Itoa(i)))
+	if debug {
+		for i, pattern := range positionDetectionPatterns {
+			ExportGroups(matrix.OrgSize, pattern, filepath.Join(path, "positionDetectionPattern"+strconv.Itoa(i)))
+		}
 	}
 
 	lineWidth := LineWidth(positionDetectionPatterns)

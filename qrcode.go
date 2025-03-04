@@ -457,6 +457,7 @@ func GetData(unmaskMatrix, dataArea *Matrix) []bool {
 	width := len(unmaskMatrix.Points)
 	var data []bool
 	maxPos := width - 1
+
 	for t := maxPos; t > 0; {
 		for y := maxPos; y >= 0; y-- {
 			for x := t; x >= t-1; x-- {
@@ -465,10 +466,12 @@ func GetData(unmaskMatrix, dataArea *Matrix) []bool {
 				}
 			}
 		}
-		t = t - 2
+		
+		t -= 2
 		if t == 6 {
-			t = t - 1
+			t -= 1
 		}
+
 		for y := 0; y <= maxPos; y++ {
 			for x := t; x >= t-1 && x >= 0; x-- {
 				if x < len(unmaskMatrix.Points[y]) && dataArea.AtPoints(x, y) {
@@ -476,7 +479,8 @@ func GetData(unmaskMatrix, dataArea *Matrix) []bool {
 				}
 			}
 		}
-		t = t - 2
+		
+		t -= 2
 	}
 	return data
 }
@@ -520,7 +524,7 @@ func Line(start, end *Point, matrix *Matrix) (line []bool) {
 	return
 }
 
-// 标线
+// Alignment
 func (mx *Matrix) CenterList(line []bool, offset int) (li []int) {
 	subMap := map[int]int{}
 	value := line[0]
@@ -555,8 +559,6 @@ func (mx *Matrix) CenterList(line []bool, offset int) (li []int) {
 		}
 	}
 	return li
-
-	// TODO: Multi-angle recognition
 }
 
 func ExportGroups(size image.Rectangle, hollow []*PointGroup, filename string) error {
@@ -593,9 +595,35 @@ func (mx *Matrix) SplitGroups() [][]Point {
 
 			m[y][x] = false
 
-			for i := range newGroup {
-				v := newGroup[i]
-				SplitGroup(&m, v.X, v.Y, &newGroup)
+			for i := 0; i < len(newGroup); i++ { // magic
+				center := newGroup[i]
+
+				centerX, centerY := center.X, center.Y
+
+				maxY := len(m) - 1
+
+				for y := -1; y < 2; y++ {
+					for x := -1; x < 2; x++ {
+						hereY := centerY + y
+
+						if hereY < 0 || hereY > maxY {
+							continue
+						}
+
+						hereX := centerX + x
+
+						maxX := len(m[hereY]) - 1
+
+						if hereX < 0 || hereX > maxX {
+							continue
+						}
+
+						if m[hereY][hereX] {
+							m[hereY][hereX] = false
+							newGroup = append(newGroup, Point{hereX, hereY})
+						}
+					}
+				}
 			}
 			groups = append(groups, newGroup)
 		}

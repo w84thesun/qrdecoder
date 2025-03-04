@@ -3,8 +3,9 @@ package qrcode
 import (
 	"image"
 	"io"
-	"os"
 )
+
+var Debug = false
 
 // QR code recognition function
 func Decode(fi io.Reader) (*Matrix, error) {
@@ -13,7 +14,7 @@ func Decode(fi io.Reader) (*Matrix, error) {
 		return nil, err
 	}
 
-	qrMatrix, err := DecodeImg(img, os.TempDir())
+	qrMatrix, err := DecodeImg(img, ".", Debug)
 	if err != nil {
 		return nil, err
 	}
@@ -70,6 +71,7 @@ func ParseBlock(m *Matrix, data []bool) ([]bool, error) {
 			dataBlocks = append(dataBlocks, []bool{})
 		}
 	}
+
 	for {
 		leftLength := len(data)
 		no := 0

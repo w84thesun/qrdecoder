@@ -1,7 +1,5 @@
 package qrcode
 
-import "fmt"
-
 func Byte2Bool(bl []byte) []bool {
 	var result []bool
 	for _, b := range bl {
@@ -22,10 +20,12 @@ func Byte2Bool(bl []byte) []bool {
 func Bits2Bytes(dataCode []bool, version int) ([]byte, error) {
 	// The first 4 bits are the encoding format, the next four bits are the actual data
 	mode := Bit2Int(dataCode[0:4])
+
 	encoder, err := GetDataEncoder(version)
 	if err != nil {
 		return nil, err
 	}
+
 	err = encoder.SetCharModeCharDecoder(mode)
 	if err != nil {
 		return nil, err
@@ -34,27 +34,6 @@ func Bits2Bytes(dataCode []bool, version int) ([]byte, error) {
 	modeCharDecoder := encoder.ModeCharDecoder
 
 	return modeCharDecoder.Decode(dataCode[4:])
-}
-
-func StringBool(dataCode []bool) string {
-	return StringByte(Bool2Byte(dataCode))
-}
-
-func StringByte(b []byte) string {
-	var bitString string
-	for i := 0; i < len(b)*8; i++ {
-		if (i % 8) == 0 {
-			bitString += " "
-		}
-
-		if (b[i/8] & (0x80 >> byte(i%8))) != 0 {
-			bitString += "1"
-		} else {
-			bitString += "0"
-		}
-	}
-
-	return fmt.Sprintf("numBits=%d, bits=%s", len(b)*8, bitString)
 }
 
 func Bool2Byte(dataCode []bool) []byte {
